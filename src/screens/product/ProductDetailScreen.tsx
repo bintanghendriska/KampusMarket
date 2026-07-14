@@ -37,8 +37,6 @@ export function ProductDetailScreen({ route }: Props) {
   }, [productId]);
 
   useEffect(() => {
-    // Fetch-on-mount: same intentional pattern as useProducts (see its comment).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProduct();
   }, [loadProduct]);
 

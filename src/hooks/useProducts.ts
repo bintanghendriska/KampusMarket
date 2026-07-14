@@ -35,10 +35,6 @@ export function useProducts(): UseProductsResult {
   }, []);
 
   useEffect(() => {
-    // Fetch-on-mount: `load` sets loading/error state at the start of an async
-    // request, a standard data-fetching pattern the strict lint rule below misreads
-    // as a derived-state anti-pattern.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
