@@ -13,6 +13,18 @@ Aplikasi mobile UAS Praktikum Pemrograman Mobile, dibangun dengan **React Native
 
 Tidak ada library UI kit pihak ketiga (NativeBase, RN Paper, dll) — seluruh komponen dibangun manual untuk memenuhi requirement reusable component.
 
+## Design System
+
+Seluruh tampilan mengikuti satu design system terpusat di `src/constants/` — tidak ada nilai warna, ukuran font, spacing, atau shadow yang di-hardcode langsung di screen/komponen.
+
+- **`colors.ts`** — skala neutral (abu-abu dingin) + satu warna aksen biru, dipakai konsisten sebagai satu-satunya warna mencolok di seluruh app.
+- **`typography.ts`** — font **Inter** (400/500/600/700, dimuat via `@expo-google-fonts/inter`) dengan type scale tetap (`display`, `title`, `subtitle`, `body`, `caption`, dst). Setiap teks di app mengambil dari scale ini, bukan `fontSize`/`fontWeight` ad hoc.
+- **`spacing.ts`** — 8-point spacing system (`4, 8, 12, 16, 24, 32, 40, 48`) dan radius **16–24px** untuk card/button (`999` khusus pill/avatar), plus `touchTarget.min = 44` untuk memastikan semua elemen interaktif memenuhi touch target minimum.
+- **`shadows.ts`** — 3 tingkat soft shadow (`sm/md/lg`), opacity rendah, tanpa shadow keras atau border tebal.
+- **`hooks/usePressAnimation.ts`** — micro-interaction scale-down-on-press yang konsisten di semua tombol, card produk, dan chip kategori, dijalankan di native thread (`useNativeDriver`) supaya tidak membebani performa.
+
+Highlight desain per layar: Login/Register pakai layout terbuka (bukan form dalam kotak) dengan input filled-style (Material 3) dan CTA solid + link teks untuk aksi sekunder; Product Detail memakai floating back/wishlist button di atas gambar, "sheet" rounded-top yang menimpa foto, dan sticky bottom bar untuk aksi utama — pola yang umum dipakai Airbnb.
+
 ## Menjalankan Proyek
 
 ```bash
@@ -58,11 +70,11 @@ src/
 ├── screens/        # Layar per fitur (auth, home, product, wishlist, profile)
 ├── navigation/      # React Navigation setup + tipe param list
 ├── context/         # Auth & Wishlist global state (Context API)
-├── hooks/           # Custom hooks (useDebounce, useProducts)
-├── services/        # Networking layer (satu-satunya pemanggil fetch)
+├── hooks/           # Custom hooks (useDebounce, useProducts, usePressAnimation)
+├── services/        # Networking + local storage layer (satu-satunya pemanggil fetch/AsyncStorage)
 ├── types/           # TypeScript interfaces untuk shape API
 ├── utils/           # Fungsi validasi form (pure functions)
-└── constants/        # Design tokens (warna, spacing) & endpoint API
+└── constants/        # Design tokens (colors, typography, spacing, shadows) & endpoint API
 ```
 
 ## Keputusan Arsitektur Utama
