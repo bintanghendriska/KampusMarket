@@ -4,10 +4,11 @@ Aplikasi mobile UAS Praktikum Pemrograman Mobile, dibangun dengan **React Native
 
 ## Tech Stack
 
-- **Expo** (managed workflow, SDK 57) + **TypeScript**
+- **Expo** (managed workflow, SDK 54) + **TypeScript**
 - **React Navigation** (native-stack + bottom-tabs)
 - **Fetch API** untuk networking (tanpa Axios)
 - **React Context API** untuk state global (tanpa Redux/Zustand — lihat alasan di bawah)
+- **AsyncStorage** khusus untuk menyimpan akun yang didaftarkan secara lokal (lihat "Catatan Penting" di bawah)
 - **ESLint** (`eslint-config-expo`) + **Prettier**
 
 Tidak ada library UI kit pihak ketiga (NativeBase, RN Paper, dll) — seluruh komponen dibangun manual untuk memenuhi requirement reusable component.
@@ -38,12 +39,16 @@ User **tidak bisa** mengakses Bottom Tab tanpa login terlebih dahulu — root na
 
 ## Catatan Penting — Login & Register terhadap DummyJSON
 
-DummyJSON `POST /auth/login` hanya menerima kredensial dari user seed yang sudah ada di database mereka; endpoint ini **tidak** benar-benar membuat user baru yang bisa login. Untuk tetap jujur secara teknis sekaligus mendemonstrasikan integrasi networking yang nyata di kedua form:
+DummyJSON `POST /auth/login` hanya menerima kredensial dari user seed yang sudah ada di database mereka; endpoint ini **tidak** benar-benar membuat user baru yang bisa login. Supaya alur Register → Login tetap benar-benar berfungsi end-to-end (bukan cuma demo API call), aplikasi ini pakai pendekatan hybrid:
 
-- **Register** memvalidasi Nama, Email (format), dan Password, lalu benar-benar memanggil `POST /users/add` (loading/success/error state nyata).
-- **Login** memvalidasi Username & Password, lalu memanggil `POST /auth/login` sungguhan. Gunakan akun demo yang tertera di layar Login:
+- **Register** meminta Nama, **Username**, Email (format valid), dan Password. Setelah validasi lolos, aplikasi tetap memanggil `POST /users/add` sungguhan ke DummyJSON (mendemonstrasikan networking nyata dengan loading/success/error state), **lalu** menyimpan akun tersebut secara lokal di perangkat (`src/services/localAccountStore.ts`, via `AsyncStorage`) — karena DummyJSON sendiri tidak menyimpannya.
+- **Login** mengecek username/password ke akun lokal tersebut terlebih dahulu. Kalau cocok, langsung berhasil masuk tanpa perlu koneksi internet. Kalau usernamenya tidak ditemukan secara lokal, aplikasi baru mencoba `POST /auth/login` sungguhan ke DummyJSON — ini yang membuat akun demo di bawah tetap berfungsi:
   - Username: `emilys`
   - Password: `emilyspass`
+
+Setelah Register berhasil, Anda otomatis diarahkan ke Login dengan username sudah terisi — tinggal masukkan password yang baru saja dibuat.
+
+> Catatan keamanan: password akun lokal disimpan apa adanya (plain text) di `AsyncStorage`. Ini simplifikasi yang disengaja untuk kebutuhan demo/UAS (DummyJSON memang tidak punya endpoint registrasi asli) — jangan pernah dipakai untuk aplikasi produksi sungguhan.
 
 ## Struktur Folder
 

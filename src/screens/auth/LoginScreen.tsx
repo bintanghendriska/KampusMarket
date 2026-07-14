@@ -16,6 +16,7 @@ import { fontSize, spacing } from '../../constants/spacing';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/apiClient';
 import { authService } from '../../services/authService';
+import { localAccountStore } from '../../services/localAccountStore';
 import type { AuthStackParamList } from '../../navigation/types';
 import {
   isFormValid,
@@ -25,13 +26,14 @@ import {
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-export function LoginScreen({ navigation }: Props) {
+export function LoginScreen({ navigation, route }: Props) {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(route.params?.prefillUsername ?? '');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [justRegistered] = useState(!!route.params?.prefillUsername);
 
   const handleSubmit = useCallback(async () => {
     const validationErrors = validateLoginForm({ username, password });
@@ -42,10 +44,31 @@ export function LoginScreen({ navigation }: Props) {
 
     setIsSubmitting(true);
     try {
-      const user = await authService.login({ username: username.trim(), password });
+      const trimmedUsername = username.trim();
+
+      // Accounts created via Register live on-device (DummyJSON never persists
+      // them), so they're checked first before falling back to the real API.
+      const localAccount = await localAccountStore.findByUsername(trimmedUsername);
+      if (localAccount) {
+        if (localAccount.password !== password) {
+          setApiError('Username atau password salah');
+          return;
+        }
+        login({
+          id: localAccount.id,
+          username: localAccount.username,
+          email: localAccount.email,
+          firstName: localAccount.name,
+          lastName: '',
+          accessToken: 'local-session',
+        });
+        return;
+      }
+
+      const user = await authService.login({ username: trimmedUsername, password });
       login(user);
     } catch (error) {
-      setApiError(error instanceof ApiError ? error.message : 'Login gagal, coba lagi.');
+      setApiError(error instanceof ApiError ? error.message : 'Username atau password salah');
     } finally {
       setIsSubmitting(false);
     }
@@ -64,6 +87,12 @@ export function LoginScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>Masuk untuk melanjutkan belanja</Text>
 
         <View style={styles.form}>
+          {justRegistered && (
+            <Text style={styles.successText}>
+              Registrasi berhasil! Masukkan password yang baru saja Anda buat untuk masuk.
+            </Text>
+          )}
+
           <CustomInput
             label="Username"
             placeholder="Masukkan username"
@@ -84,7 +113,7 @@ export function LoginScreen({ navigation }: Props) {
           />
 
           <Text style={styles.hint}>
-            Akun demo: {DEMO_CREDENTIALS.username} / {DEMO_CREDENTIALS.password}
+            Belum daftar? Gunakan akun demo: {DEMO_CREDENTIALS.username} / {DEMO_CREDENTIALS.password}
           </Text>
 
           {!!apiError && <Text style={styles.apiError}>{apiError}</Text>}
@@ -129,6 +158,12 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  successText: {
+    color: colors.success,
+    fontSize: fontSize.sm,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   hint: {
     fontSize: fontSize.xs,

@@ -14,6 +14,7 @@ import { colors } from '../../constants/colors';
 import { fontSize, spacing } from '../../constants/spacing';
 import { ApiError } from '../../services/apiClient';
 import { authService } from '../../services/authService';
+import { localAccountStore } from '../../services/localAccountStore';
 import type { AuthStackParamList } from '../../navigation/types';
 import {
   isFormValid,
@@ -25,34 +26,56 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
 export function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
-    const validationErrors = validateRegisterForm({ name, email, password });
-    setErrors(validationErrors);
+    const validationErrors = validateRegisterForm({ name, username, email, password });
     setApiError(null);
-    setSuccessMessage(null);
-
-    if (!isFormValid(validationErrors)) return;
 
     setIsSubmitting(true);
     try {
-      await authService.register({ name: name.trim(), email: email.trim(), password });
-      setSuccessMessage('Registrasi berhasil! Silakan masuk menggunakan akun demo di halaman login.');
-      setName('');
-      setEmail('');
-      setPassword('');
+      const trimmedUsername = username.trim();
+
+      if (!validationErrors.username && trimmedUsername) {
+        const existing = await localAccountStore.findByUsername(trimmedUsername);
+        if (existing) {
+          validationErrors.username = 'Username sudah digunakan, pilih username lain';
+        }
+      }
+
+      setErrors(validationErrors);
+      if (!isFormValid(validationErrors)) return;
+
+      // Demonstrates a real DummyJSON network call (loading/success/error state);
+      // see README for why this alone cannot make Login succeed afterwards.
+      await authService.register({
+        name: name.trim(),
+        username: trimmedUsername,
+        email: email.trim(),
+        password,
+      });
+
+      // Persist locally so Login can actually authenticate this account.
+      await localAccountStore.save({
+        id: Date.now(),
+        username: trimmedUsername,
+        password,
+        name: name.trim(),
+        email: email.trim(),
+      });
+
+      navigation.navigate('Login', { prefillUsername: trimmedUsername });
     } catch (error) {
       setApiError(error instanceof ApiError ? error.message : 'Registrasi gagal, coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [name, email, password]);
+  }, [name, username, email, password, navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -76,6 +99,15 @@ export function RegisterScreen({ navigation }: Props) {
             autoCapitalize="words"
           />
           <CustomInput
+            label="Username"
+            placeholder="Buat username untuk login"
+            value={username}
+            onChangeText={setUsername}
+            error={errors.username}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <CustomInput
             label="Email"
             placeholder="Masukkan email"
             value={email}
@@ -96,7 +128,6 @@ export function RegisterScreen({ navigation }: Props) {
           />
 
           {!!apiError && <Text style={styles.apiError}>{apiError}</Text>}
-          {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
 
           <View style={styles.submitButton}>
             <PrimaryButton label="Daftar" onPress={handleSubmit} loading={isSubmitting} />
@@ -141,12 +172,6 @@ const styles = StyleSheet.create({
   },
   apiError: {
     color: colors.danger,
-    fontSize: fontSize.sm,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  successText: {
-    color: colors.success,
     fontSize: fontSize.sm,
     marginBottom: spacing.md,
     textAlign: 'center',

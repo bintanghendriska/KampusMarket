@@ -15,6 +15,7 @@ export const authService = {
   register: (payload: RegisterPayload) =>
     apiClient.post<RegisteredUser>(endpoints.registerUser, {
       firstName: payload.name,
+      username: payload.username,
       email: payload.email,
       password: payload.password,
     }),

@@ -52,12 +52,14 @@ export function validateLoginForm(values: LoginFormValues): LoginFormErrors {
 
 export interface RegisterFormValues {
   name: string;
+  username: string;
   email: string;
   password: string;
 }
 
 export interface RegisterFormErrors {
   name?: string;
+  username?: string;
   email?: string;
   password?: string;
 }
@@ -65,6 +67,7 @@ export interface RegisterFormErrors {
 export function validateRegisterForm(values: RegisterFormValues): RegisterFormErrors {
   const errors: RegisterFormErrors = {
     name: validateName(values.name),
+    username: validateUsername(values.username),
     email: validateEmail(values.email),
     password: validatePassword(values.password),
   };
