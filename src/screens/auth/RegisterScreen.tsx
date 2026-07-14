@@ -7,11 +7,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CustomInput } from '../../components/common/CustomInput';
 import { PrimaryButton } from '../../components/common/PrimaryButton';
 import { colors } from '../../constants/colors';
-import { fontSize, spacing } from '../../constants/spacing';
+import { radius, spacing } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
 import { ApiError } from '../../services/apiClient';
 import { authService } from '../../services/authService';
 import { localAccountStore } from '../../services/localAccountStore';
@@ -51,8 +53,6 @@ export function RegisterScreen({ navigation }: Props) {
       setErrors(validationErrors);
       if (!isFormValid(validationErrors)) return;
 
-      // Demonstrates a real DummyJSON network call (loading/success/error state);
-      // see README for why this alone cannot make Login succeed afterwards.
       await authService.register({
         name: name.trim(),
         username: trimmedUsername,
@@ -60,7 +60,6 @@ export function RegisterScreen({ navigation }: Props) {
         password,
       });
 
-      // Persist locally so Login can actually authenticate this account.
       await localAccountStore.save({
         id: Date.now(),
         username: trimmedUsername,
@@ -85,9 +84,14 @@ export function RegisterScreen({ navigation }: Props) {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Buat Akun</Text>
-        <Text style={styles.subtitle}>Daftar untuk mulai berbelanja</Text>
+        <View style={styles.brandMark}>
+          <Ionicons name="person-add" size={24} color={colors.textInverse} />
+        </View>
+
+        <Text style={styles.title}>Buat akun baru</Text>
+        <Text style={styles.subtitle}>Isi data di bawah untuk mulai berbelanja</Text>
 
         <View style={styles.form}>
           <CustomInput
@@ -132,13 +136,13 @@ export function RegisterScreen({ navigation }: Props) {
           <View style={styles.submitButton}>
             <PrimaryButton label="Daftar" onPress={handleSubmit} loading={isSubmitting} />
           </View>
-
-          <PrimaryButton
-            label="Sudah punya akun? Masuk"
-            onPress={() => navigation.navigate('Login')}
-            variant="outline"
-          />
         </View>
+
+        <PrimaryButton
+          label="Sudah punya akun? Masuk"
+          onPress={() => navigation.navigate('Login')}
+          variant="ghost"
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -154,29 +158,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.xl,
   },
+  brandMark: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary600,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
   title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
+    ...typography.display,
     color: colors.textPrimary,
-    textAlign: 'center',
   },
   subtitle: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
     marginBottom: spacing.xl,
   },
   form: {
     width: '100%',
   },
   apiError: {
+    ...typography.caption,
     color: colors.danger,
-    fontSize: fontSize.sm,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
   submitButton: {
+    marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
 });

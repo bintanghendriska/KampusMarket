@@ -1,7 +1,10 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
+import { fontFamily } from '../constants/typography';
+import { shadows } from '../constants/shadows';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { HomeStackNavigator } from './HomeStackNavigator';
@@ -20,12 +23,23 @@ export function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.primary600,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopWidth: 0,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingTop: 8,
+          ...shadows.md,
+        },
+        tabBarLabelStyle: {
+          fontFamily: fontFamily.medium,
+          fontSize: 11,
+        },
         tabBarIcon: ({ color, size, focused }) => {
           const baseName = TAB_ICONS[route.name as keyof MainTabParamList];
           const iconName = focused ? baseName : (`${baseName}-outline` as keyof typeof Ionicons.glyphMap);
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={size - 2} color={color} />;
         },
       })}
     >

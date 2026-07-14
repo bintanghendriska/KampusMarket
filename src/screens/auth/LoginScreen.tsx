@@ -7,12 +7,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CustomInput } from '../../components/common/CustomInput';
 import { PrimaryButton } from '../../components/common/PrimaryButton';
 import { colors } from '../../constants/colors';
 import { DEMO_CREDENTIALS } from '../../constants/endpoints';
-import { fontSize, spacing } from '../../constants/spacing';
+import { radius, spacing } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../services/apiClient';
 import { authService } from '../../services/authService';
@@ -46,8 +48,6 @@ export function LoginScreen({ navigation, route }: Props) {
     try {
       const trimmedUsername = username.trim();
 
-      // Accounts created via Register live on-device (DummyJSON never persists
-      // them), so they're checked first before falling back to the real API.
       const localAccount = await localAccountStore.findByUsername(trimmedUsername);
       if (localAccount) {
         if (localAccount.password !== password) {
@@ -82,15 +82,23 @@ export function LoginScreen({ navigation, route }: Props) {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Selamat Datang</Text>
-        <Text style={styles.subtitle}>Masuk untuk melanjutkan belanja</Text>
+        <View style={styles.brandMark}>
+          <Ionicons name="bag-handle" size={26} color={colors.textInverse} />
+        </View>
+
+        <Text style={styles.title}>Selamat datang kembali</Text>
+        <Text style={styles.subtitle}>Masuk untuk melanjutkan belanja Anda</Text>
 
         <View style={styles.form}>
           {justRegistered && (
-            <Text style={styles.successText}>
-              Registrasi berhasil! Masukkan password yang baru saja Anda buat untuk masuk.
-            </Text>
+            <View style={styles.successBanner}>
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              <Text style={styles.successText}>
+                Registrasi berhasil. Masukkan password Anda untuk masuk.
+              </Text>
+            </View>
           )}
 
           <CustomInput
@@ -112,22 +120,25 @@ export function LoginScreen({ navigation, route }: Props) {
             autoCapitalize="none"
           />
 
-          <Text style={styles.hint}>
-            Belum daftar? Gunakan akun demo: {DEMO_CREDENTIALS.username} / {DEMO_CREDENTIALS.password}
-          </Text>
-
           {!!apiError && <Text style={styles.apiError}>{apiError}</Text>}
 
           <View style={styles.submitButton}>
             <PrimaryButton label="Masuk" onPress={handleSubmit} loading={isSubmitting} />
           </View>
 
-          <PrimaryButton
-            label="Belum punya akun? Daftar"
-            onPress={() => navigation.navigate('Register')}
-            variant="outline"
-          />
+          <Text style={styles.hint}>
+            Belum daftar? Coba akun demo{' '}
+            <Text style={styles.hintStrong}>
+              {DEMO_CREDENTIALS.username} / {DEMO_CREDENTIALS.password}
+            </Text>
+          </Text>
         </View>
+
+        <PrimaryButton
+          label="Belum punya akun? Daftar"
+          onPress={() => navigation.navigate('Register')}
+          variant="ghost"
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -143,40 +154,59 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.xl,
   },
+  brandMark: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary600,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
   title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
+    ...typography.display,
     color: colors.textPrimary,
-    textAlign: 'center',
   },
   subtitle: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
     marginBottom: spacing.xl,
   },
   form: {
     width: '100%',
   },
-  successText: {
-    color: colors.success,
-    fontSize: fontSize.sm,
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.successSurface,
+    borderRadius: radius.md,
+    padding: spacing.sm,
     marginBottom: spacing.md,
-    textAlign: 'center',
+  },
+  successText: {
+    ...typography.caption,
+    color: colors.success,
+    flex: 1,
   },
   hint: {
-    fontSize: fontSize.xs,
+    ...typography.small,
     color: colors.textMuted,
-    marginBottom: spacing.md,
+  },
+  hintStrong: {
+    ...typography.small,
+    fontFamily: typography.caption.fontFamily,
+    color: colors.textSecondary,
   },
   apiError: {
+    ...typography.caption,
     color: colors.danger,
-    fontSize: fontSize.sm,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
   submitButton: {
+    marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
 });

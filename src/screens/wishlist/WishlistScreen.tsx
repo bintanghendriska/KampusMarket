@@ -4,7 +4,8 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ProductCard } from '../../components/product/ProductCard';
 import { colors } from '../../constants/colors';
-import { fontSize, spacing } from '../../constants/spacing';
+import { spacing } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
 import { useWishlist } from '../../context/WishlistContext';
 import type { MainTabParamList } from '../../navigation/types';
 import type { Product } from '../../types/product.types';
@@ -42,7 +43,12 @@ export function WishlistScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>Wishlist Saya</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Wishlist Saya</Text>
+        <Text style={styles.headerSubtitle}>
+          {items.length > 0 ? `${items.length} produk disimpan` : 'Belum ada produk disimpan'}
+        </Text>
+      </View>
       <FlatList
         key={numColumns}
         data={items}
@@ -68,14 +74,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    ...typography.display,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+  },
+  headerSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   columnWrapper: {
     gap: spacing.md,
@@ -83,6 +95,7 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     gap: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
   },
 });

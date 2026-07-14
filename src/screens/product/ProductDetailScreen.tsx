@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingState } from '../../components/common/LoadingState';
 import { PrimaryButton } from '../../components/common/PrimaryButton';
 import { colors } from '../../constants/colors';
-import { fontSize, radius, spacing } from '../../constants/spacing';
+import { radius, spacing } from '../../constants/spacing';
+import { shadows } from '../../constants/shadows';
+import { typography } from '../../constants/typography';
 import { useWishlist } from '../../context/WishlistContext';
+import { usePressAnimation } from '../../hooks/usePressAnimation';
 import { ApiError } from '../../services/apiClient';
 import { productService } from '../../services/productService';
 import type { HomeStackParamList } from '../../navigation/types';
@@ -15,9 +19,39 @@ import type { Product } from '../../types/product.types';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'ProductDetail'>;
 
-export function ProductDetailScreen({ route }: Props) {
+function FloatingIconButton({
+  icon,
+  color,
+  onPress,
+  accessibilityLabel,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  color: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  const { animatedStyle, onPressIn, onPressOut } = usePressAnimation();
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        style={styles.floatingButton}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        hitSlop={8}
+      >
+        <Ionicons name={icon} size={20} color={color} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { toggleItem, isInWishlist } = useWishlist();
+  const insets = useSafeAreaInsets();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,36 +81,64 @@ export function ProductDetailScreen({ route }: Props) {
   const discountedPrice = product.price * (1 - product.discountPercentage / 100);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.imageWrapper}>
+          <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
+        </View>
 
-      <View style={styles.body}>
-        <View style={styles.headerRow}>
-          <Text style={styles.category}>{product.category}</Text>
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={14} color={colors.warning} />
-            <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
+        <View style={styles.sheet}>
+          <View style={styles.headerRow}>
+            <Text style={styles.category}>{product.category}</Text>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={14} color={colors.warning} />
+              <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
+            </View>
           </View>
+
+          <Text style={styles.title}>{product.title}</Text>
+          {!!product.brand && <Text style={styles.brand}>{product.brand}</Text>}
+
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>${discountedPrice.toFixed(2)}</Text>
+            {product.discountPercentage > 0 && (
+              <Text style={styles.originalPrice}>${product.price.toFixed(2)}</Text>
+            )}
+          </View>
+
+          <Text style={styles.stock}>
+            {product.stock > 0 ? `Stok tersedia: ${product.stock}` : 'Stok habis'}
+          </Text>
+
+          <Text style={styles.sectionTitle}>Deskripsi</Text>
+          <Text style={styles.description}>{product.description}</Text>
         </View>
+      </ScrollView>
 
-        <Text style={styles.title}>{product.title}</Text>
-        {!!product.brand && <Text style={styles.brand}>{product.brand}</Text>}
+      <View style={[styles.floatingHeader, { top: insets.top + spacing.xs }]}>
+        <FloatingIconButton
+          icon="chevron-back"
+          color={colors.textPrimary}
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Kembali"
+        />
+        <FloatingIconButton
+          icon={wishlisted ? 'heart' : 'heart-outline'}
+          color={wishlisted ? colors.danger : colors.textPrimary}
+          onPress={() => toggleItem(product)}
+          accessibilityLabel={wishlisted ? 'Hapus dari wishlist' : 'Tambah ke wishlist'}
+        />
+      </View>
 
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>${discountedPrice.toFixed(2)}</Text>
-          {product.discountPercentage > 0 && (
-            <Text style={styles.originalPrice}>${product.price.toFixed(2)}</Text>
-          )}
+      <View style={[styles.ctaBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <View>
+          <Text style={styles.ctaLabel}>Harga</Text>
+          <Text style={styles.ctaPrice}>${discountedPrice.toFixed(2)}</Text>
         </View>
-
-        <Text style={styles.stock}>
-          {product.stock > 0 ? `Stok tersedia: ${product.stock}` : 'Stok habis'}
-        </Text>
-
-        <Text style={styles.sectionTitle}>Deskripsi</Text>
-        <Text style={styles.description}>{product.description}</Text>
-
-        <View style={styles.wishlistButton}>
+        <View style={styles.ctaButton}>
           <PrimaryButton
             label={wishlisted ? 'Hapus dari Wishlist' : 'Tambah ke Wishlist'}
             onPress={() => toggleItem(product)}
@@ -84,7 +146,7 @@ export function ProductDetailScreen({ route }: Props) {
           />
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -93,16 +155,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    flexGrow: 1,
+  imageWrapper: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: colors.neutral100,
   },
   image: {
     width: '100%',
-    aspectRatio: 1,
-    backgroundColor: colors.surface,
+    height: '100%',
   },
-  body: {
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    marginTop: -radius.xl,
     padding: spacing.lg,
+  },
+  floatingHeader: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  floatingButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
   },
   headerRow: {
     flexDirection: 'row',
@@ -110,33 +193,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   category: {
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.primary600,
     textTransform: 'capitalize',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primary50,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xxs,
     borderRadius: radius.sm,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.xxs,
   },
   ratingText: {
-    fontSize: fontSize.sm,
+    ...typography.bodyMedium,
     color: colors.textSecondary,
   },
   title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    ...typography.title,
     color: colors.textPrimary,
     marginTop: spacing.md,
   },
   brand: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
   priceRow: {
     flexDirection: 'row',
@@ -145,33 +227,52 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   price: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.primary,
+    ...typography.display,
+    color: colors.primary600,
   },
   originalPrice: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   stock: {
-    fontSize: fontSize.sm,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
   sectionTitle: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
+    ...typography.subtitle,
     color: colors.textPrimary,
     marginTop: spacing.xl,
     marginBottom: spacing.xs,
   },
   description: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
-    lineHeight: 20,
   },
-  wishlistButton: {
-    marginTop: spacing.xl,
+  ctaBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    gap: spacing.md,
+    ...shadows.lg,
+  },
+  ctaLabel: {
+    ...typography.small,
+    color: colors.textMuted,
+  },
+  ctaPrice: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  ctaButton: {
+    flex: 1,
   },
 });

@@ -1,14 +1,23 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CustomInput } from '../../components/common/CustomInput';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingState } from '../../components/common/LoadingState';
 import { CategoryFilter, ALL_CATEGORIES_VALUE } from '../../components/product/CategoryFilter';
 import { ProductCard } from '../../components/product/ProductCard';
 import { colors } from '../../constants/colors';
-import { fontSize, spacing } from '../../constants/spacing';
+import { radius, spacing, touchTarget } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
 import { useWishlist } from '../../context/WishlistContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useProducts } from '../../hooks/useProducts';
@@ -64,13 +73,26 @@ export function HomeScreen({ navigation }: Props) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Katalog Produk</Text>
-        <CustomInput
-          placeholder="Cari produk..."
-          value={searchInput}
-          onChangeText={setSearchInput}
-          autoCapitalize="none"
-          style={styles.searchInput}
-        />
+        <Text style={styles.headerSubtitle}>{products.length} produk tersedia</Text>
+
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari produk..."
+            placeholderTextColor={colors.textMuted}
+            value={searchInput}
+            onChangeText={setSearchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchInput.length > 0 && (
+            <Pressable onPress={() => setSearchInput('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+        </View>
+
         <CategoryFilter
           categories={categories}
           selected={selectedCategory}
@@ -111,13 +133,29 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
   headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    ...typography.display,
     color: colors.textPrimary,
+  },
+  headerSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: 2,
     marginBottom: spacing.md,
   },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: touchTarget.min + 4,
+    backgroundColor: colors.neutral100,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+  },
   searchInput: {
-    marginBottom: 0,
+    flex: 1,
+    ...typography.body,
+    color: colors.textPrimary,
+    paddingVertical: 0,
   },
   columnWrapper: {
     gap: spacing.md,
@@ -126,6 +164,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
   },
 });

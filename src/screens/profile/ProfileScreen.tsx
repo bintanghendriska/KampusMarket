@@ -1,9 +1,11 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from '../../components/common/PrimaryButton';
 import { colors } from '../../constants/colors';
-import { fontSize, radius, spacing } from '../../constants/spacing';
+import { radius, spacing } from '../../constants/spacing';
+import { shadows } from '../../constants/shadows';
+import { typography } from '../../constants/typography';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
 
@@ -14,13 +16,15 @@ export function ProfileScreen() {
   if (!user) return null;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.headerTitle}>Profil</Text>
+
       <View style={styles.avatarWrapper}>
         {user.image ? (
           <Image source={{ uri: user.image }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
-            <Ionicons name="person" size={40} color={colors.textInverse} />
+            <Ionicons name="person" size={36} color={colors.textInverse} />
           </View>
         )}
       </View>
@@ -30,15 +34,32 @@ export function ProfileScreen() {
       </Text>
       <Text style={styles.email}>{user.email}</Text>
 
-      <View style={styles.statsCard}>
-        <Text style={styles.statsValue}>{items.length}</Text>
-        <Text style={styles.statsLabel}>Produk di Wishlist</Text>
+      <View style={styles.card}>
+        <View style={styles.cardRow}>
+          <View style={styles.cardIcon}>
+            <Ionicons name="heart" size={18} color={colors.primary600} />
+          </View>
+          <View style={styles.cardRowText}>
+            <Text style={styles.cardLabel}>Wishlist</Text>
+            <Text style={styles.cardValue}>{items.length} produk disimpan</Text>
+          </View>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.cardRow}>
+          <View style={styles.cardIcon}>
+            <Ionicons name="at" size={18} color={colors.primary600} />
+          </View>
+          <View style={styles.cardRowText}>
+            <Text style={styles.cardLabel}>Username</Text>
+            <Text style={styles.cardValue}>{user.username}</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.logoutButton}>
-        <PrimaryButton label="Logout" onPress={logout} variant="danger" />
+        <PrimaryButton label="Logout" icon="log-out-outline" onPress={logout} variant="danger" />
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -46,55 +67,81 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
+    flexGrow: 1,
     alignItems: 'center',
     padding: spacing.xl,
   },
+  headerTitle: {
+    ...typography.display,
+    color: colors.textPrimary,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.lg,
+  },
   avatarWrapper: {
-    marginTop: spacing.xl,
+    ...shadows.md,
+    borderRadius: radius.full,
   },
   avatar: {
-    width: 96,
-    height: 96,
+    width: 88,
+    height: 88,
     borderRadius: radius.full,
   },
   avatarFallback: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary600,
     alignItems: 'center',
     justifyContent: 'center',
   },
   name: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    ...typography.title,
     color: colors.textPrimary,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   email: {
-    fontSize: fontSize.sm,
+    ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
-  statsCard: {
-    marginTop: spacing.xl,
+  card: {
+    width: '100%',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xxl,
+    padding: spacing.md,
+    marginTop: spacing.xl,
+    ...shadows.sm,
+  },
+  cardRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
   },
-  statsValue: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.primary,
+  cardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statsLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+  cardRowText: {
+    flex: 1,
+  },
+  cardLabel: {
+    ...typography.small,
+    color: colors.textMuted,
+  },
+  cardValue: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
   },
   logoutButton: {
     width: '100%',
-    marginTop: 'auto',
+    marginTop: spacing.xl,
   },
 });
