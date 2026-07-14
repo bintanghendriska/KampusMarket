@@ -1,7 +1,9 @@
 import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
+import { Animated, FlatList, Pressable, StyleSheet, Text } from 'react-native';
 import { colors } from '../../constants/colors';
-import { fontSize, radius, spacing } from '../../constants/spacing';
+import { radius, spacing, touchTarget } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
+import { usePressAnimation } from '../../hooks/usePressAnimation';
 import type { ProductCategory } from '../../types/product.types';
 
 export const ALL_CATEGORIES_VALUE = 'all';
@@ -10,6 +12,33 @@ interface CategoryFilterProps {
   categories: ProductCategory[];
   selected: string;
   onSelect: (categorySlug: string) => void;
+}
+
+function CategoryChip({
+  label,
+  isActive,
+  onSelect,
+}: {
+  label: string;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const { animatedStyle, onPressIn, onPressOut } = usePressAnimation();
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        style={[styles.chip, isActive && styles.chipActive]}
+        onPress={onSelect}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isActive }}
+      >
+        <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
 }
 
 export function CategoryFilter({ categories, selected, onSelect }: CategoryFilterProps) {
@@ -22,49 +51,38 @@ export function CategoryFilter({ categories, selected, onSelect }: CategoryFilte
       keyExtractor={(item) => item.slug}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.listContent}
-      renderItem={({ item }) => {
-        const isActive = item.slug === selected;
-        return (
-          <Pressable
-            style={[styles.chip, isActive && styles.chipActive]}
-            onPress={() => onSelect(item.slug)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isActive }}
-          >
-            <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
-              {item.name}
-            </Text>
-          </Pressable>
-        );
-      }}
+      renderItem={({ item }) => (
+        <CategoryChip
+          label={item.name}
+          isActive={item.slug === selected}
+          onSelect={() => onSelect(item.slug)}
+        />
+      )}
     />
   );
 }
 
 const styles = StyleSheet.create({
   listContent: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingVertical: spacing.sm,
   },
   chip: {
+    minHeight: touchTarget.min - 6,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    justifyContent: 'center',
     borderRadius: radius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.neutral100,
   },
   chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.primary600,
   },
   chipLabel: {
-    fontSize: fontSize.sm,
+    ...typography.caption,
     color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   chipLabelActive: {
     color: colors.textInverse,
-    fontWeight: '600',
   },
 });

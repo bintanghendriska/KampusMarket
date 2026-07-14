@@ -1,8 +1,11 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants/colors';
-import { fontSize, radius, spacing } from '../../constants/spacing';
+import { radius, spacing } from '../../constants/spacing';
+import { shadows } from '../../constants/shadows';
+import { typography } from '../../constants/typography';
+import { usePressAnimation } from '../../hooks/usePressAnimation';
 import type { Product } from '../../types/product.types';
 
 interface ProductCardProps {
@@ -18,63 +21,72 @@ function ProductCardComponent({
   isWishlisted,
   onToggleWishlist,
 }: ProductCardProps) {
-  return (
-    <Pressable
-      style={styles.card}
-      onPress={() => onPress(product)}
-      accessibilityRole="button"
-      accessibilityLabel={`Lihat detail ${product.title}`}
-    >
-      <View style={styles.imageWrapper}>
-        <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
-        <Pressable
-          style={styles.wishlistButton}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isWishlisted ? `Hapus ${product.title} dari wishlist` : `Tambah ${product.title} ke wishlist`
-          }
-          onPress={() => onToggleWishlist(product)}
-        >
-          <Ionicons
-            name={isWishlisted ? 'heart' : 'heart-outline'}
-            size={18}
-            color={isWishlisted ? colors.danger : colors.textSecondary}
-          />
-        </Pressable>
-      </View>
+  const { animatedStyle, onPressIn, onPressOut } = usePressAnimation(0.98);
 
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>
-          {product.title}
-        </Text>
-        <View style={styles.footerRow}>
-          <Text style={styles.price}>${product.price.toFixed(2)}</Text>
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={12} color={colors.warning} />
-            <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
+  return (
+    <Animated.View style={[styles.wrapper, animatedStyle]}>
+      <Pressable
+        style={styles.card}
+        onPress={() => onPress(product)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`Lihat detail ${product.title}`}
+      >
+        <View style={styles.imageWrapper}>
+          <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
+          <Pressable
+            style={styles.wishlistButton}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isWishlisted
+                ? `Hapus ${product.title} dari wishlist`
+                : `Tambah ${product.title} ke wishlist`
+            }
+            onPress={() => onToggleWishlist(product)}
+          >
+            <Ionicons
+              name={isWishlisted ? 'heart' : 'heart-outline'}
+              size={16}
+              color={isWishlisted ? colors.danger : colors.textSecondary}
+            />
+          </Pressable>
+        </View>
+
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={2}>
+            {product.title}
+          </Text>
+          <View style={styles.footerRow}>
+            <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={12} color={colors.warning} />
+              <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 export const ProductCard = React.memo(ProductCardComponent);
 
 const styles = StyleSheet.create({
-  card: {
+  wrapper: {
     flex: 1,
+  },
+  card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.sm,
   },
   imageWrapper: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.neutral100,
   },
   image: {
     width: '100%',
@@ -82,22 +94,23 @@ const styles = StyleSheet.create({
   },
   wishlistButton: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
+    top: spacing.xs,
+    right: spacing.xs,
     width: 32,
     height: 32,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.sm,
   },
   info: {
     padding: spacing.sm,
   },
   title: {
-    fontSize: fontSize.sm,
+    ...typography.bodyMedium,
+    fontSize: 14,
     color: colors.textPrimary,
-    fontWeight: '500',
     minHeight: 36,
   },
   footerRow: {
@@ -107,9 +120,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   price: {
-    fontSize: fontSize.md,
-    fontWeight: '700',
-    color: colors.primary,
+    ...typography.subtitle,
+    fontSize: 16,
+    color: colors.primary600,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -117,7 +130,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingText: {
-    fontSize: fontSize.xs,
+    ...typography.small,
     color: colors.textSecondary,
   },
 });

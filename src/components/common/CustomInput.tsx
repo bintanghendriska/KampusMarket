@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { colors } from '../../constants/colors';
-import { fontSize, radius, spacing } from '../../constants/spacing';
+import { radius, spacing, touchTarget } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
 
 interface CustomInputProps extends TextInputProps {
   label?: string;
   error?: string;
 }
 
-export function CustomInput({ label, error, style, onBlur, ...rest }: CustomInputProps) {
+export function CustomInput({ label, error, style, onBlur, onFocus, ...rest }: CustomInputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -22,7 +23,10 @@ export function CustomInput({ label, error, style, onBlur, ...rest }: CustomInpu
           style,
         ]}
         placeholderTextColor={colors.textMuted}
-        onFocus={() => setIsFocused(true)}
+        onFocus={(event) => {
+          setIsFocused(true);
+          onFocus?.(event);
+        }}
         onBlur={(event) => {
           setIsFocused(false);
           onBlur?.(event);
@@ -40,30 +44,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-    fontWeight: '500',
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xxs + 2,
   },
   input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: touchTarget.min + 4,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    fontSize: fontSize.md,
+    ...typography.body,
     color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.neutral100,
   },
   inputFocused: {
-    borderColor: colors.primary,
+    borderColor: colors.primary600,
+    backgroundColor: colors.surface,
   },
   inputError: {
     borderColor: colors.danger,
+    backgroundColor: colors.dangerSurface,
   },
   errorText: {
+    ...typography.small,
     color: colors.danger,
-    fontSize: fontSize.xs,
-    marginTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
 });
