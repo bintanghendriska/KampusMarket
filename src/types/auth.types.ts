@@ -6,6 +6,7 @@ export interface AuthUser {
   lastName: string;
   image?: string;
   accessToken: string;
+  refreshToken?: string;
 }
 
 export interface LoginPayload {

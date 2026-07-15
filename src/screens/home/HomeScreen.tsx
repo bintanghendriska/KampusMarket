@@ -1,7 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -9,10 +12,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { LoadingState } from '../../components/common/LoadingState';
+import { ProductCardSkeleton } from '../../components/product/ProductCardSkeleton';
 import { CategoryFilter, ALL_CATEGORIES_VALUE } from '../../components/product/CategoryFilter';
 import { ProductCard } from '../../components/product/ProductCard';
 import { colors } from '../../constants/colors';
@@ -21,33 +24,40 @@ import { typography } from '../../constants/typography';
 import { useWishlist } from '../../context/WishlistContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useProducts } from '../../hooks/useProducts';
-import type { HomeStackParamList } from '../../navigation/types';
+import { strings } from '../../constants/strings';
+import type { HomeScreenProps } from '../../navigation/types';
 import type { Product } from '../../types/product.types';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
+type Props = HomeScreenProps;
 
 const WIDE_SCREEN_BREAKPOINT = 700;
 
 export function HomeScreen({ navigation }: Props) {
-  const { products, categories, loading, error, refetch } = useProducts();
   const { toggleItem, isInWishlist } = useWishlist();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [searchInput, setSearchInput] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES_VALUE);
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 3 : 2;
+  // Load products based on debounced search query and category on the server
+  const {
+    products,
+    categories,
+    total,
+    loading,
+    refreshing,
+    loadingMore,
+    error,
+    refetch,
+    loadMore,
+  } = useProducts({
+    searchQuery: debouncedSearch,
+    category: selectedCategory,
+  });
 
-  const filteredProducts = useMemo(() => {
-    const query = debouncedSearch.trim().toLowerCase();
-    return products.filter((product) => {
-      const matchesQuery = query.length === 0 || product.title.toLowerCase().includes(query);
-      const matchesCategory =
-        selectedCategory === ALL_CATEGORIES_VALUE || product.category === selectedCategory;
-      return matchesQuery && matchesCategory;
-    });
-  }, [products, debouncedSearch, selectedCategory]);
+  const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 3 : 2;
 
   const handleProductPress = useCallback(
     (product: Product) => navigation.navigate('ProductDetail', { productId: product.id }),
@@ -55,39 +65,66 @@ export function HomeScreen({ navigation }: Props) {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Product }) => (
-      <ProductCard
-        product={item}
-        onPress={handleProductPress}
-        isWishlisted={isInWishlist(item.id)}
-        onToggleWishlist={toggleItem}
-      />
-    ),
+    ({ item }: { item: any }) => {
+      if (item.id && String(item.id).startsWith('skeleton')) {
+        return <ProductCardSkeleton />;
+      }
+      return (
+        <ProductCard
+          product={item}
+          onPress={handleProductPress}
+          isWishlisted={isInWishlist(item.id)}
+          onToggleWishlist={toggleItem}
+        />
+      );
+    },
     [handleProductPress, isInWishlist, toggleItem],
   );
 
-  if (loading) return <LoadingState message="Memuat produk..." />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
+  const isInitialLoading = loading && products.length === 0;
+
+  // Dynamic header subtitle based on active filters
+  const hasActiveFilter = selectedCategory !== ALL_CATEGORIES_VALUE || debouncedSearch.trim().length > 0;
+  const headerSubtitle = isInitialLoading
+    ? 'Memuat produk...'
+    : hasActiveFilter
+      ? `Menampilkan ${products.length} hasil`
+      : strings.home.subtitle(total);
+
+  // Only show full screen error on first load when there is no data
+  if (error && products.length === 0) return <ErrorState message={error} onRetry={refetch} />;
+
+  // Display pulsing skeletons when loading is active on mount
+  const dataToRender = isInitialLoading
+    ? Array.from({ length: 6 }, (_, i) => ({ id: `skeleton-${i}` }))
+    : products;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, spacing.lg) }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Katalog Produk</Text>
-        <Text style={styles.headerSubtitle}>{products.length} produk tersedia</Text>
+        <Text style={styles.headerTitle}>{strings.home.title}</Text>
+        <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
 
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Cari produk..."
+            placeholder={strings.home.searchPlaceholder}
             placeholderTextColor={colors.textMuted}
             value={searchInput}
             onChangeText={setSearchInput}
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="search"
+            accessibilityLabel={strings.home.searchPlaceholder}
           />
           {searchInput.length > 0 && (
-            <Pressable onPress={() => setSearchInput('')} hitSlop={8}>
+            <Pressable
+              onPress={() => setSearchInput('')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Bersihkan pencarian"
+            >
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </Pressable>
           )}
@@ -102,7 +139,7 @@ export function HomeScreen({ navigation }: Props) {
 
       <FlatList
         key={numColumns}
-        data={filteredProducts}
+        data={dataToRender}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         numColumns={numColumns}
@@ -111,13 +148,31 @@ export function HomeScreen({ navigation }: Props) {
         ListEmptyComponent={
           <EmptyState
             icon="search-outline"
-            title="Produk tidak ditemukan"
-            message="Coba ubah kata kunci pencarian atau kategori"
+            title={strings.home.emptyTitle}
+            message={strings.home.emptyMessage}
           />
         }
         showsVerticalScrollIndicator={false}
         initialNumToRender={8}
-        removeClippedSubviews
+        removeClippedSubviews={Platform.OS === 'android'} // Android-only optimization (Finding #40)
+        onEndReached={isInitialLoading ? undefined : loadMore}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator color={colors.primary} size="small" />
+            </View>
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refetch}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+            enabled={!isInitialLoading}
+          />
+        }
       />
     </View>
   );
@@ -130,7 +185,6 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
   },
   headerTitle: {
     ...typography.display,
@@ -166,5 +220,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
+  },
+  footerLoader: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

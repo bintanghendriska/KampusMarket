@@ -1,5 +1,6 @@
 // 8-point spacing system (4 kept as a half-step for fine adjustments).
 export const spacing = {
+  xxxs: 2,
   xxs: 4,
   xs: 8,
   sm: 12,

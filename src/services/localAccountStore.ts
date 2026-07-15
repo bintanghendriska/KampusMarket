@@ -1,13 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sha256 } from '../utils/crypto';
 
 const STORAGE_KEY = 'uasprak:local-accounts';
 
 export interface LocalAccount {
   id: number;
   username: string;
-  // Demo-only simplification: DummyJSON has no real registration endpoint, so
-  // this on-device store is what makes Register -> Login actually work
-  // end-to-end. Never store plain-text passwords like this in production.
+  // Hashed password
   password: string;
   name: string;
   email: string;
@@ -29,12 +28,24 @@ async function writeAccounts(accounts: LocalAccount[]): Promise<void> {
 export const localAccountStore = {
   findByUsername: async (username: string): Promise<LocalAccount | undefined> => {
     const accounts = await readAccounts();
-    return accounts.find((account) => account.username === username);
+    const normalized = username.trim().toLowerCase();
+    return accounts.find((account) => account.username.trim().toLowerCase() === normalized);
   },
 
   save: async (account: LocalAccount): Promise<void> => {
     const accounts = await readAccounts();
-    const withoutExisting = accounts.filter((item) => item.username !== account.username);
-    await writeAccounts([...withoutExisting, account]);
+    const normalized = account.username.trim().toLowerCase();
+    const withoutExisting = accounts.filter(
+      (item) => item.username.trim().toLowerCase() !== normalized
+    );
+    
+    // Hash password before saving to local storage
+    const hashedAccount: LocalAccount = {
+      ...account,
+      username: normalized,
+      password: sha256(account.password),
+    };
+    
+    await writeAccounts([...withoutExisting, hashedAccount]);
   },
 };

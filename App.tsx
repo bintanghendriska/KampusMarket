@@ -13,6 +13,7 @@ import {
 import { AuthProvider } from './src/context/AuthContext';
 import { WishlistProvider } from './src/context/WishlistContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,12 +37,14 @@ export default function App() {
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
-      <AuthProvider>
-        <WishlistProvider>
-          <RootNavigator />
-          <StatusBar style="dark" />
-        </WishlistProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <WishlistProvider>
+            <RootNavigator />
+            <StatusBar style="dark" />
+          </WishlistProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

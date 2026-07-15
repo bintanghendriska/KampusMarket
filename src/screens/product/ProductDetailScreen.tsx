@@ -1,23 +1,35 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Animated,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingState } from '../../components/common/LoadingState';
-import { PrimaryButton } from '../../components/common/PrimaryButton';
+import { Button } from '../../components/common/Button';
+import { ProductImage } from '../../components/common/ProductImage';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { shadows } from '../../constants/shadows';
 import { typography } from '../../constants/typography';
 import { useWishlist } from '../../context/WishlistContext';
 import { usePressAnimation } from '../../hooks/usePressAnimation';
+import { formatPrice } from '../../utils/format';
 import { ApiError } from '../../services/apiClient';
 import { productService } from '../../services/productService';
-import type { HomeStackParamList } from '../../navigation/types';
+import { strings } from '../../constants/strings';
+import type { ProductDetailScreenProps } from '../../navigation/types';
 import type { Product } from '../../types/product.types';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'ProductDetail'>;
+type Props = ProductDetailScreenProps;
 
 function FloatingIconButton({
   icon,
@@ -52,44 +64,114 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { toggleItem, isInWishlist } = useWishlist();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Image gallery state
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  
+  // Dynamic padding based on measured CTA bar height
+  const [ctaBarHeight, setCtaBarHeight] = useState(100);
 
-  const loadProduct = useCallback(async () => {
+  const loadProduct = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await productService.getProductById(productId);
+      const result = await productService.getProductById(productId, signal);
       setProduct(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gagal memuat detail produk');
+      if (err instanceof Error && err.name === 'AbortError') return;
+      setError(err instanceof ApiError ? err.message : strings.detail.loadDetailError);
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
   useEffect(() => {
-    loadProduct();
+    const controller = new AbortController();
+    loadProduct(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [loadProduct]);
 
-  if (loading) return <LoadingState message="Memuat detail produk..." />;
-  if (error || !product) return <ErrorState message={error ?? 'Produk tidak ditemukan'} onRetry={loadProduct} />;
+  const handleScroll = useCallback((event: any) => {
+    const slideSize = event.nativeEvent.layoutMeasurement.width;
+    if (slideSize <= 0) return;
+    const index = event.nativeEvent.contentOffset.x / slideSize;
+    setActiveImageIndex(Math.round(index));
+  }, []);
+
+  const handleCtaLayout = useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 0) {
+      setCtaBarHeight(height);
+    }
+  }, []);
+
+  const handleBuyNow = useCallback(() => {
+    if (!product) return;
+    Alert.alert(
+      'Pembelian Berhasil',
+      `Terima kasih telah membeli ${product.title}. Fitur checkout akan segera hadir!`,
+      [{ text: 'OK' }]
+    );
+  }, [product]);
+
+  if (loading) return <LoadingState message={strings.loading} />;
+  if (error || !product) {
+    return (
+      <ErrorState
+        message={error ?? strings.detail.productNotFound}
+        onRetry={loadProduct}
+      />
+    );
+  }
 
   const wishlisted = isInWishlist(product.id);
   const discountedPrice = product.price * (1 - product.discountPercentage / 100);
+  const imagesData = product.images && product.images.length > 0 ? product.images : [product.thumbnail];
 
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+        contentContainerStyle={{ paddingBottom: ctaBarHeight + spacing.lg }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.imageWrapper}>
-          <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
+        {/* Horizontal Image Gallery */}
+        <View style={[styles.galleryContainer, { width }]}>
+          <FlatList
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            data={imagesData}
+            keyExtractor={(item, index) => `${item}-${index}`}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            renderItem={({ item }) => (
+              <ProductImage uri={item} style={{ width, height: width }} resizeMode="cover" />
+            )}
+          />
+          {/* Dot indicators */}
+          {imagesData.length > 1 && (
+            <View style={styles.dotsContainer}>
+              {imagesData.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    activeImageIndex === index && styles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
+        {/* Content Sheet */}
         <View style={styles.sheet}>
           <View style={styles.headerRow}>
             <Text style={styles.category}>{product.category}</Text>
@@ -103,46 +185,51 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           {!!product.brand && <Text style={styles.brand}>{product.brand}</Text>}
 
           <View style={styles.priceRow}>
-            <Text style={styles.price}>${discountedPrice.toFixed(2)}</Text>
+            <Text style={styles.price}>{formatPrice(discountedPrice)}</Text>
             {product.discountPercentage > 0 && (
-              <Text style={styles.originalPrice}>${product.price.toFixed(2)}</Text>
+              <Text style={styles.originalPrice}>{formatPrice(product.price)}</Text>
             )}
           </View>
 
           <Text style={styles.stock}>
-            {product.stock > 0 ? `Stok tersedia: ${product.stock}` : 'Stok habis'}
+            {product.stock > 0 ? strings.detail.stockAvailable(product.stock) : strings.detail.stockEmpty}
           </Text>
 
-          <Text style={styles.sectionTitle}>Deskripsi</Text>
+          <Text style={styles.sectionTitle}>{strings.detail.descriptionTitle}</Text>
           <Text style={styles.description}>{product.description}</Text>
         </View>
       </ScrollView>
 
+      {/* Floating header controls */}
       <View style={[styles.floatingHeader, { top: insets.top + spacing.xs }]}>
         <FloatingIconButton
           icon="chevron-back"
           color={colors.textPrimary}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="Kembali"
+          accessibilityLabel={strings.back}
         />
         <FloatingIconButton
           icon={wishlisted ? 'heart' : 'heart-outline'}
           color={wishlisted ? colors.danger : colors.textPrimary}
           onPress={() => toggleItem(product)}
-          accessibilityLabel={wishlisted ? 'Hapus dari wishlist' : 'Tambah ke wishlist'}
+          accessibilityLabel={wishlisted ? strings.detail.ctaRemoveWishlist : strings.detail.ctaAddWishlist}
         />
       </View>
 
-      <View style={[styles.ctaBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+      {/* Primary commerce CTA bar */}
+      <View 
+        onLayout={handleCtaLayout} 
+        style={[styles.ctaBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}
+      >
         <View>
-          <Text style={styles.ctaLabel}>Harga</Text>
-          <Text style={styles.ctaPrice}>${discountedPrice.toFixed(2)}</Text>
+          <Text style={styles.ctaLabel}>{strings.detail.ctaPriceLabel}</Text>
+          <Text style={styles.ctaPrice}>{formatPrice(discountedPrice)}</Text>
         </View>
         <View style={styles.ctaButton}>
-          <PrimaryButton
-            label={wishlisted ? 'Hapus dari Wishlist' : 'Tambah ke Wishlist'}
-            onPress={() => toggleItem(product)}
-            variant={wishlisted ? 'danger' : 'primary'}
+          <Button
+            label="Beli Sekarang"
+            onPress={handleBuyNow}
+            variant="primary"
           />
         </View>
       </View>
@@ -155,14 +242,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  imageWrapper: {
-    width: '100%',
+  galleryContainer: {
     aspectRatio: 1,
     backgroundColor: colors.neutral100,
+    position: 'relative',
   },
-  image: {
-    width: '100%',
-    height: '100%',
+  dotsContainer: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xxs,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  dotActive: {
+    backgroundColor: colors.neutral0,
+    width: 12,
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -170,6 +272,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     marginTop: -radius.xl,
     padding: spacing.lg,
+    ...shadows.sm,
   },
   floatingHeader: {
     position: 'absolute',
@@ -194,7 +297,7 @@ const styles = StyleSheet.create({
   },
   category: {
     ...typography.caption,
-    color: colors.primary600,
+    color: colors.primary,
     textTransform: 'capitalize',
     backgroundColor: colors.primary50,
     paddingHorizontal: spacing.sm,
@@ -228,11 +331,11 @@ const styles = StyleSheet.create({
   },
   price: {
     ...typography.display,
-    color: colors.primary600,
+    color: colors.primary,
   },
   originalPrice: {
     ...typography.body,
-    color: colors.textMuted,
+    color: colors.textSecondary, // Use textSecondary for contrast (Finding #35)
     textDecorationLine: 'line-through',
   },
   stock: {
@@ -266,7 +369,7 @@ const styles = StyleSheet.create({
   },
   ctaLabel: {
     ...typography.small,
-    color: colors.textMuted,
+    color: colors.textSecondary, // Use textSecondary for contrast (Finding #35)
   },
   ctaPrice: {
     ...typography.subtitle,

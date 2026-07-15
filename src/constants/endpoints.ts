@@ -8,7 +8,4 @@ export const endpoints = {
   productCategories: `${BASE_URL}/products/categories`,
 };
 
-export const DEMO_CREDENTIALS = {
-  username: 'emilys',
-  password: 'emilyspass',
-};
+export { DEMO_CREDENTIALS } from './demo';

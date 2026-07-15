@@ -13,6 +13,7 @@ export const typography = {
   subtitle: { fontFamily: fontFamily.semiBold, fontSize: 17, lineHeight: 24 },
   bodyMedium: { fontFamily: fontFamily.medium, fontSize: 15, lineHeight: 22 },
   body: { fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 22 },
+  bodySmallMedium: { fontFamily: fontFamily.medium, fontSize: 14, lineHeight: 20 },
   caption: { fontFamily: fontFamily.medium, fontSize: 13, lineHeight: 18 },
   small: { fontFamily: fontFamily.regular, fontSize: 12, lineHeight: 16 },
 } as const;

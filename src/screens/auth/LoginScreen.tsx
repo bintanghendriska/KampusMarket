@@ -1,24 +1,23 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CustomInput } from '../../components/common/CustomInput';
-import { PrimaryButton } from '../../components/common/PrimaryButton';
+import { Button } from '../../components/common/Button';
 import { colors } from '../../constants/colors';
 import { DEMO_CREDENTIALS } from '../../constants/endpoints';
 import { radius, spacing } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
 import { useAuth } from '../../context/AuthContext';
-import { ApiError } from '../../services/apiClient';
-import { authService } from '../../services/authService';
-import { localAccountStore } from '../../services/localAccountStore';
+import { strings } from '../../constants/strings';
 import type { AuthStackParamList } from '../../navigation/types';
 import {
   isFormValid,
@@ -30,45 +29,54 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation, route }: Props) {
   const { login } = useAuth();
-  const [username, setUsername] = useState(route.params?.prefillUsername ?? '');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [justRegistered] = useState(!!route.params?.prefillUsername);
+  const [justRegistered, setJustRegistered] = useState(false);
+
+  const passwordRef = useRef<TextInput>(null);
+
+  // Monitor navigation params for Register -> Login handoff (prefill + banner)
+  useEffect(() => {
+    if (route.params?.prefillUsername) {
+      setUsername(route.params.prefillUsername);
+      setJustRegistered(true);
+      // Clean params so banner doesn't persist on subsequent states
+      navigation.setParams({ prefillUsername: undefined });
+    }
+  }, [route.params?.prefillUsername, navigation]);
+
+  const handleUsernameChange = useCallback((val: string) => {
+    setUsername(val);
+    if (errors.username) {
+      setErrors((prev) => ({ ...prev, username: undefined }));
+    }
+    setApiError(null);
+  }, [errors.username]);
+
+  const handlePasswordChange = useCallback((val: string) => {
+    setPassword(val);
+    if (errors.password) {
+      setErrors((prev) => ({ ...prev, password: undefined }));
+    }
+    setApiError(null);
+  }, [errors.password]);
 
   const handleSubmit = useCallback(async () => {
     const validationErrors = validateLoginForm({ username, password });
     setErrors(validationErrors);
     setApiError(null);
+    setJustRegistered(false);
 
     if (!isFormValid(validationErrors)) return;
 
     setIsSubmitting(true);
     try {
-      const trimmedUsername = username.trim();
-
-      const localAccount = await localAccountStore.findByUsername(trimmedUsername);
-      if (localAccount) {
-        if (localAccount.password !== password) {
-          setApiError('Username atau password salah');
-          return;
-        }
-        login({
-          id: localAccount.id,
-          username: localAccount.username,
-          email: localAccount.email,
-          firstName: localAccount.name,
-          lastName: '',
-          accessToken: 'local-session',
-        });
-        return;
-      }
-
-      const user = await authService.login({ username: trimmedUsername, password });
-      login(user);
+      await login({ username: username.trim(), password });
     } catch (error) {
-      setApiError(error instanceof ApiError ? error.message : 'Username atau password salah');
+      setApiError(error instanceof Error ? error.message : strings.api.invalidCredentials);
     } finally {
       setIsSubmitting(false);
     }
@@ -88,54 +96,61 @@ export function LoginScreen({ navigation, route }: Props) {
           <Ionicons name="bag-handle" size={26} color={colors.textInverse} />
         </View>
 
-        <Text style={styles.title}>Selamat datang kembali</Text>
-        <Text style={styles.subtitle}>Masuk untuk melanjutkan belanja Anda</Text>
+        <Text style={styles.title}>{strings.auth.loginTitle}</Text>
+        <Text style={styles.subtitle}>{strings.auth.loginSubtitle}</Text>
 
         <View style={styles.form}>
           {justRegistered && (
             <View style={styles.successBanner}>
               <Ionicons name="checkmark-circle" size={18} color={colors.success} />
               <Text style={styles.successText}>
-                Registrasi berhasil. Masukkan password Anda untuk masuk.
+                {strings.auth.registerSuccessBanner}
               </Text>
             </View>
           )}
 
           <CustomInput
-            label="Username"
-            placeholder="Masukkan username"
+            label={strings.auth.labelUsername}
+            placeholder={strings.auth.placeholderUsername}
             value={username}
-            onChangeText={setUsername}
+            onChangeText={handleUsernameChange}
             error={errors.username}
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
           />
           <CustomInput
-            label="Password"
-            placeholder="Masukkan password"
+            ref={passwordRef}
+            label={strings.auth.labelPassword}
+            placeholder={strings.auth.placeholderPassword}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             error={errors.password}
             secureTextEntry
             autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
           />
 
           {!!apiError && <Text style={styles.apiError}>{apiError}</Text>}
 
           <View style={styles.submitButton}>
-            <PrimaryButton label="Masuk" onPress={handleSubmit} loading={isSubmitting} />
+            <Button label={strings.auth.loginButton} onPress={handleSubmit} loading={isSubmitting} />
           </View>
 
-          <Text style={styles.hint}>
-            Belum daftar? Coba akun demo{' '}
-            <Text style={styles.hintStrong}>
-              {DEMO_CREDENTIALS.username} / {DEMO_CREDENTIALS.password}
+          {__DEV__ && (
+            <Text style={styles.hint}>
+              {strings.auth.loginDemoHint}
+              <Text style={styles.hintStrong}>
+                {DEMO_CREDENTIALS.username} / {DEMO_CREDENTIALS.password}
+              </Text>
             </Text>
-          </Text>
+          )}
         </View>
 
-        <PrimaryButton
-          label="Belum punya akun? Daftar"
+        <Button
+          label={strings.auth.loginRegisterLink}
           onPress={() => navigation.navigate('Register')}
           variant="ghost"
         />
@@ -158,7 +173,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: radius.lg,
-    backgroundColor: colors.primary600,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,

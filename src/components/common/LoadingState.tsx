@@ -1,33 +1,26 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/spacing';
-import { typography } from '../../constants/typography';
+import { StatusView } from './StatusView';
+import { strings } from '../../constants/strings';
 
 interface LoadingStateProps {
   message?: string;
 }
 
-export function LoadingState({ message = 'Memuat data...' }: LoadingStateProps) {
+export function LoadingState({ message = strings.loading }: LoadingStateProps) {
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color={colors.primary600} />
-      <Text style={styles.message}>{message}</Text>
-    </View>
+    <StatusView title={message}>
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    </StatusView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.background,
-  },
-  message: {
-    ...typography.body,
-    marginTop: spacing.md,
-    color: colors.textSecondary,
+  loaderContainer: {
+    marginTop: spacing.lg,
   },
 });

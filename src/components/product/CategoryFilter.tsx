@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Animated, FlatList, Pressable, StyleSheet, Text } from 'react-native';
 import { colors } from '../../constants/colors';
+import { strings } from '../../constants/strings';
 import { radius, spacing, touchTarget } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
 import { usePressAnimation } from '../../hooks/usePressAnimation';
@@ -14,7 +15,7 @@ interface CategoryFilterProps {
   onSelect: (categorySlug: string) => void;
 }
 
-function CategoryChip({
+const CategoryChip = React.memo(({
   label,
   isActive,
   onSelect,
@@ -22,7 +23,7 @@ function CategoryChip({
   label: string;
   isActive: boolean;
   onSelect: () => void;
-}) {
+}) => {
   const { animatedStyle, onPressIn, onPressOut } = usePressAnimation();
 
   return (
@@ -32,6 +33,7 @@ function CategoryChip({
         onPress={onSelect}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
+        hitSlop={{ top: 3, bottom: 3, left: 0, right: 0 }}
         accessibilityRole="button"
         accessibilityState={{ selected: isActive }}
       >
@@ -39,10 +41,15 @@ function CategoryChip({
       </Pressable>
     </Animated.View>
   );
-}
+});
+
+CategoryChip.displayName = 'CategoryChip';
 
 export function CategoryFilter({ categories, selected, onSelect }: CategoryFilterProps) {
-  const data = [{ slug: ALL_CATEGORIES_VALUE, name: 'Semua', url: '' }, ...categories];
+  const data = useMemo(() => [
+    { slug: ALL_CATEGORIES_VALUE, name: strings.home.categoryAll, url: '' },
+    ...categories
+  ], [categories]);
 
   return (
     <FlatList
@@ -75,7 +82,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral100,
   },
   chipActive: {
-    backgroundColor: colors.primary600,
+    backgroundColor: colors.primary,
   },
   chipLabel: {
     ...typography.caption,

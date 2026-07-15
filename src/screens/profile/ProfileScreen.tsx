@@ -1,23 +1,32 @@
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PrimaryButton } from '../../components/common/PrimaryButton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '../../components/common/Button';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { shadows } from '../../constants/shadows';
 import { typography } from '../../constants/typography';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { strings } from '../../constants/strings';
 
 export function ProfileScreen() {
   const { user, logout } = useAuth();
   const { items } = useWishlist();
+  const insets = useSafeAreaInsets();
 
   if (!user) return null;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.headerTitle}>Profil</Text>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={[
+        styles.content, 
+        { paddingTop: Math.max(insets.top + spacing.sm, spacing.xl) }
+      ]}
+    >
+      <Text style={styles.headerTitle}>{strings.profile.title}</Text>
 
       <View style={styles.avatarWrapper}>
         {user.image ? (
@@ -37,27 +46,32 @@ export function ProfileScreen() {
       <View style={styles.card}>
         <View style={styles.cardRow}>
           <View style={styles.cardIcon}>
-            <Ionicons name="heart" size={18} color={colors.primary600} />
+            <Ionicons name="heart" size={18} color={colors.primary} />
           </View>
           <View style={styles.cardRowText}>
-            <Text style={styles.cardLabel}>Wishlist</Text>
-            <Text style={styles.cardValue}>{items.length} produk disimpan</Text>
+            <Text style={styles.cardLabel}>{strings.profile.wishlistLabel}</Text>
+            <Text style={styles.cardValue}>{strings.profile.wishlistValue(items.length)}</Text>
           </View>
         </View>
         <View style={styles.divider} />
         <View style={styles.cardRow}>
           <View style={styles.cardIcon}>
-            <Ionicons name="at" size={18} color={colors.primary600} />
+            <Ionicons name="at" size={18} color={colors.primary} />
           </View>
           <View style={styles.cardRowText}>
-            <Text style={styles.cardLabel}>Username</Text>
+            <Text style={styles.cardLabel}>{strings.profile.usernameLabel}</Text>
             <Text style={styles.cardValue}>{user.username}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.logoutButton}>
-        <PrimaryButton label="Logout" icon="log-out-outline" onPress={logout} variant="danger" />
+        <Button 
+          label={strings.profile.logoutButton} 
+          icon="log-out-outline" 
+          onPress={logout} 
+          variant="danger" 
+        />
       </View>
     </ScrollView>
   );
@@ -71,7 +85,8 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     alignItems: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   headerTitle: {
     ...typography.display,
@@ -89,7 +104,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   avatarFallback: {
-    backgroundColor: colors.primary600,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -129,7 +144,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     ...typography.small,
-    color: colors.textMuted,
+    color: colors.textSecondary, // Use textSecondary for contrast (Finding #35)
   },
   cardValue: {
     ...typography.bodyMedium,

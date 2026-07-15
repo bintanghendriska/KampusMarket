@@ -1,4 +1,4 @@
-export const colors = {
+const palette = {
   // Neutral scale — cool gray base for a clean, minimal canvas.
   neutral0: '#FFFFFF',
   neutral50: '#FAFAFA',
@@ -25,18 +25,24 @@ export const colors = {
   danger: '#DC2626',
   dangerSurface: '#FEF2F2',
   warning: '#D97706',
+};
 
-  // Surfaces & text
-  background: '#FAFAFA',
-  surface: '#FFFFFF',
-  border: '#E4E4E7',
+export const colors = {
+  // Base Palette (exposed for direct access if needed)
+  ...palette,
+
+  // Semantic mappings (theme bindings)
+  background: palette.neutral50,
+  surface: palette.neutral0,
+  border: palette.neutral200,
   overlay: 'rgba(24, 24, 27, 0.45)',
 
-  textPrimary: '#18181B',
-  textSecondary: '#52525B',
-  textMuted: '#A1A1AA',
-  textInverse: '#FFFFFF',
+  textPrimary: palette.neutral900,
+  textSecondary: palette.neutral600,
+  textMuted: palette.neutral400,
+  textInverse: palette.neutral0,
 
-  // Convenience alias for the single accent color used across components.
-  primary: '#2563EB',
+  // Unified accent color token (removed primary600 alias in favor of a single name)
+  primary: palette.primary600,
 } as const;
+

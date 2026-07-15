@@ -1,22 +1,22 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CustomInput } from '../../components/common/CustomInput';
-import { PrimaryButton } from '../../components/common/PrimaryButton';
+import { Button } from '../../components/common/Button';
 import { colors } from '../../constants/colors';
 import { radius, spacing } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
-import { ApiError } from '../../services/apiClient';
-import { authService } from '../../services/authService';
-import { localAccountStore } from '../../services/localAccountStore';
+import { useAuth } from '../../context/AuthContext';
+import { strings } from '../../constants/strings';
 import type { AuthStackParamList } from '../../navigation/types';
 import {
   isFormValid,
@@ -27,6 +27,7 @@ import {
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
 export function RegisterScreen({ navigation }: Props) {
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -35,46 +36,66 @@ export function RegisterScreen({ navigation }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const usernameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
+  const handleNameChange = useCallback((val: string) => {
+    setName(val);
+    if (errors.name) {
+      setErrors((prev) => ({ ...prev, name: undefined }));
+    }
+    setApiError(null);
+  }, [errors.name]);
+
+  const handleUsernameChange = useCallback((val: string) => {
+    setUsername(val);
+    if (errors.username) {
+      setErrors((prev) => ({ ...prev, username: undefined }));
+    }
+    setApiError(null);
+  }, [errors.username]);
+
+  const handleEmailChange = useCallback((val: string) => {
+    setEmail(val);
+    if (errors.email) {
+      setErrors((prev) => ({ ...prev, email: undefined }));
+    }
+    setApiError(null);
+  }, [errors.email]);
+
+  const handlePasswordChange = useCallback((val: string) => {
+    setPassword(val);
+    if (errors.password) {
+      setErrors((prev) => ({ ...prev, password: undefined }));
+    }
+    setApiError(null);
+  }, [errors.password]);
+
   const handleSubmit = useCallback(async () => {
     const validationErrors = validateRegisterForm({ name, username, email, password });
+    setErrors(validationErrors);
     setApiError(null);
+
+    if (!isFormValid(validationErrors)) return;
 
     setIsSubmitting(true);
     try {
       const trimmedUsername = username.trim();
-
-      if (!validationErrors.username && trimmedUsername) {
-        const existing = await localAccountStore.findByUsername(trimmedUsername);
-        if (existing) {
-          validationErrors.username = 'Username sudah digunakan, pilih username lain';
-        }
-      }
-
-      setErrors(validationErrors);
-      if (!isFormValid(validationErrors)) return;
-
-      await authService.register({
+      await register({
         name: name.trim(),
         username: trimmedUsername,
         email: email.trim(),
         password,
-      });
-
-      await localAccountStore.save({
-        id: Date.now(),
-        username: trimmedUsername,
-        password,
-        name: name.trim(),
-        email: email.trim(),
       });
 
       navigation.navigate('Login', { prefillUsername: trimmedUsername });
     } catch (error) {
-      setApiError(error instanceof ApiError ? error.message : 'Registrasi gagal, coba lagi.');
+      setApiError(error instanceof Error ? error.message : strings.api.registerFailed);
     } finally {
       setIsSubmitting(false);
     }
-  }, [name, username, email, password, navigation]);
+  }, [name, username, email, password, navigation, register]);
 
   return (
     <KeyboardAvoidingView
@@ -90,56 +111,67 @@ export function RegisterScreen({ navigation }: Props) {
           <Ionicons name="person-add" size={24} color={colors.textInverse} />
         </View>
 
-        <Text style={styles.title}>Buat akun baru</Text>
-        <Text style={styles.subtitle}>Isi data di bawah untuk mulai berbelanja</Text>
+        <Text style={styles.title}>{strings.auth.registerTitle}</Text>
+        <Text style={styles.subtitle}>{strings.auth.registerSubtitle}</Text>
 
         <View style={styles.form}>
           <CustomInput
-            label="Nama"
-            placeholder="Masukkan nama lengkap"
+            label={strings.auth.labelName}
+            placeholder={strings.auth.placeholderName}
             value={name}
-            onChangeText={setName}
+            onChangeText={handleNameChange}
             error={errors.name}
             autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={() => usernameRef.current?.focus()}
           />
           <CustomInput
-            label="Username"
-            placeholder="Buat username untuk login"
+            ref={usernameRef}
+            label={strings.auth.labelUsername}
+            placeholder={strings.auth.placeholderRegisterUsername}
             value={username}
-            onChangeText={setUsername}
+            onChangeText={handleUsernameChange}
             error={errors.username}
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current?.focus()}
           />
           <CustomInput
-            label="Email"
-            placeholder="Masukkan email"
+            ref={emailRef}
+            label={strings.auth.labelEmail}
+            placeholder={strings.auth.placeholderEmail}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
             error={errors.email}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
           />
           <CustomInput
-            label="Password"
-            placeholder="Masukkan password"
+            ref={passwordRef}
+            label={strings.auth.labelPassword}
+            placeholder={strings.auth.placeholderPassword}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             error={errors.password}
             secureTextEntry
             autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
           />
 
           {!!apiError && <Text style={styles.apiError}>{apiError}</Text>}
 
           <View style={styles.submitButton}>
-            <PrimaryButton label="Daftar" onPress={handleSubmit} loading={isSubmitting} />
+            <Button label={strings.auth.registerButton} onPress={handleSubmit} loading={isSubmitting} />
           </View>
         </View>
 
-        <PrimaryButton
-          label="Sudah punya akun? Masuk"
+        <Button
+          label={strings.auth.registerLoginLink}
           onPress={() => navigation.navigate('Login')}
           variant="ghost"
         />
@@ -162,7 +194,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: radius.lg,
-    backgroundColor: colors.primary600,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,

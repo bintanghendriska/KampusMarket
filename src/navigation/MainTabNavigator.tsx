@@ -1,6 +1,7 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
 import { fontFamily } from '../constants/typography';
@@ -19,17 +20,24 @@ const TAB_ICONS: Record<keyof MainTabParamList, keyof typeof Ionicons.glyphMap> 
 };
 
 export function MainTabNavigator() {
+  const insets = useSafeAreaInsets();
+  
+  // Standard tab bar height is 52pt. We add bottom safe area inset to it.
+  const tabHeight = 52 + insets.bottom;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.primary600,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingTop: 8,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          height: tabHeight,
+          paddingTop: 6,
+          paddingBottom: insets.bottom > 0 ? insets.bottom - 4 : 6,
           ...shadows.md,
         },
         tabBarLabelStyle: {
